@@ -1,0 +1,7 @@
+{
+  "name": "Tìm kiếm sound AI",
+  "description": "An AI-powered sound effect manager for editors. Features smart search, auto-tagging, video sound extraction, and copyright estimation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
