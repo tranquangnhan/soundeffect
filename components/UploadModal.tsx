@@ -19,7 +19,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = async (fileList: FileList | File[]) => {
-    // Filter for audio files
     const files = Array.from(fileList).filter(f => f.type.startsWith('audio/'));
 
     if (files.length === 0) {
@@ -38,13 +37,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
         const url = URL.createObjectURL(file);
         const duration = await getAudioDuration(url);
         
-        // Convert to base64 for AI analysis (limit size to 4MB for performance)
+        // For analysis, we send a small sample or check if file is small enough
         let base64 = undefined;
         if (file.size < 4 * 1024 * 1024) { 
            base64 = await blobToBase64(file);
         }
 
-        // Gemini AI Analysis
         const info = await analyzeSoundInfo(file.name, base64, file.type);
 
         const newSound: SoundEffect = {
@@ -52,18 +50,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
           name: info.name,
           category: info.category,
           tags: info.tags,
-          url: url,
+          url: url, // Temporary blob url
           duration: duration,
           source: SoundSource.UPLOAD,
           isFavorite: false,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          filename: file.name
         };
 
-        // Pass both the metadata and the raw file (blob) to App.tsx for storage
-        onUpload(newSound, file);
+        // Pass raw file to be saved to disk
+        await onUpload(newSound, file);
       } catch (error) {
         console.error(`Error processing ${file.name}:`, error);
-        // Continue to next file even if one fails
       }
     }
 
@@ -110,9 +108,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
             onClick={() => fileInputRef.current?.click()}
           >
             <div className="text-center text-zinc-400">
-              <div className="text-5xl mb-4">☁️</div>
-              <p className="font-bold text-lg text-zinc-200">Drag & Drop Sounds</p>
-              <p className="text-sm mt-2 text-zinc-500">Supports multiple files (MP3, WAV, OGG)</p>
+              <div className="text-5xl mb-4">💾</div>
+              <p className="font-bold text-lg text-zinc-200">Drag & Drop to Local Folder</p>
+              <p className="text-sm mt-2 text-zinc-500">Files will be copied to your connected folder</p>
             </div>
           </div>
 
@@ -145,17 +143,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
             ref={folderInputRef} 
             className="hidden" 
             multiple
-            // @ts-ignore - webkitdirectory is non-standard but supported in most browsers
+            // @ts-ignore
             webkitdirectory=""
             directory=""
             onChange={(e) => e.target.files && processFiles(e.target.files)}
           />
-          
-          <div className="mt-12 text-center max-w-md">
-            <p className="text-zinc-600 text-xs">
-              Powered by <b>Gemini 2.5</b>. Upload your raw audio library and let AI organize, tag, and categorize everything automatically.
-            </p>
-          </div>
         </div>
       )}
     </div>

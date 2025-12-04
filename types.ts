@@ -8,10 +8,10 @@ export enum SoundSource {
 export interface SoundEffect {
   id: string;
   name: string;
+  filename: string; // The physical filename in the folder
   category: string;
   tags: string[];
-  url: string; // Blob URL (Local) or Drive WebContentLink
-  driveId?: string; // ID on Google Drive
+  url: string; // Blob URL for playback
   duration: number; // in seconds
   source: SoundSource;
   isFavorite: boolean;
@@ -24,17 +24,6 @@ export interface WebSearchResult {
   title: string;
   link: string;
   snippet: string;
-}
-
-export interface UserInfo {
-  name: string;
-  email: string;
-  picture: string;
-}
-
-export interface GoogleConfig {
-  apiKey: string;
-  clientId: string;
 }
 
 export type ViewMode = 'LIBRARY' | 'UPLOAD' | 'EXTRACTOR' | 'WEB_SEARCH' | 'RECOMMENDATIONS';

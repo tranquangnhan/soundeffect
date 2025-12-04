@@ -26,7 +26,7 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract }) => {
       const audioUrl = URL.createObjectURL(audioBlob);
       const duration = await getAudioDuration(audioUrl);
 
-      // 2. AI Analyze (using filename for now, could send blob if small enough)
+      // 2. AI Analyze
       const info = await analyzeSoundInfo(file.name.replace(/\.[^/.]+$/, "") + " (Extracted)");
 
       const newSound: SoundEffect = {
@@ -38,13 +38,15 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract }) => {
         duration: duration,
         source: SoundSource.EXTRACTED,
         isFavorite: false,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        filename: `${info.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.wav`
       };
 
-      onExtract(newSound, audioBlob);
+      await onExtract(newSound, audioBlob);
+      alert("Audio extracted and saved to library!");
     } catch (error) {
       console.error("Extraction error", error);
-      alert("Failed to extract audio. Browser may not support this format.");
+      alert("Failed to extract audio.");
     } finally {
       setIsProcessing(false);
     }
@@ -64,7 +66,7 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract }) => {
         <div className="space-y-4">
            <label className={`block w-full py-4 text-center border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-zinc-800 transition-colors ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
              <span className="text-zinc-300 font-medium">
-               {isProcessing ? 'Extracting & Analyzing...' : 'Select Video File'}
+               {isProcessing ? 'Extracting & Saving...' : 'Select Video File'}
              </span>
              <input 
                type="file" 
@@ -76,7 +78,7 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract }) => {
            </label>
            
            <p className="text-xs text-zinc-600 text-center">
-             Supported: MP4, WebM, MOV. Processing happens locally in your browser.
+             The audio will be saved directly to your active library folder.
            </p>
         </div>
       </div>

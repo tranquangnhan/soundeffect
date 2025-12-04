@@ -1,16 +1,16 @@
 
 import React from 'react';
-import { ViewMode, UserInfo } from '../types';
+import { ViewMode } from '../types';
 
 interface SidebarProps {
   currentView: ViewMode;
   setView: (view: ViewMode) => void;
   itemCount: number;
-  user?: UserInfo | null;
-  onLogout?: () => void;
+  folderName?: string | null;
+  onRescan?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, itemCount, user, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, itemCount, folderName, onRescan }) => {
   const menuItems: { id: ViewMode; label: string; icon: string }[] = [
     { id: 'LIBRARY', label: 'Library', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
     { id: 'RECOMMENDATIONS', label: 'For You', icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' },
@@ -60,30 +60,24 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, itemCount, user
       </nav>
 
       <div className="p-4 border-t border-white/5 hidden md:block">
-        {user ? (
-          <div className="flex items-center space-x-3 mb-4">
-             <img src={user.picture} alt="Avatar" className="w-8 h-8 rounded-full border border-white/10" />
-             <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-bold text-white truncate">{user.name}</p>
-                <p className="text-[10px] text-ios-gray truncate">{user.email}</p>
+        {folderName ? (
+          <div className="bg-ios-surface2/50 rounded-xl p-3 border border-white/5">
+             <div className="flex items-center space-x-2 mb-2">
+                <span className="text-lg">📁</span>
+                <div className="overflow-hidden">
+                   <p className="text-[10px] text-ios-gray uppercase font-bold tracking-wider">Current Location</p>
+                   <p className="text-xs text-white truncate font-medium" title={folderName}>{folderName}</p>
+                </div>
              </div>
+             <button 
+               onClick={onRescan}
+               className="w-full bg-white/5 hover:bg-white/10 text-xs text-ios-gray hover:text-white py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+             >
+               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+               Sync Metadata
+             </button>
           </div>
         ) : null}
-        
-        {user ? (
-           <button 
-             onClick={onLogout}
-             className="w-full text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-           >
-             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-             Sign Out
-           </button>
-        ) : (
-          <div className="flex items-center space-x-2 text-xs text-ios-gray opacity-60 justify-center">
-             <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
-             <span>Guest Mode</span>
-          </div>
-        )}
       </div>
     </div>
   );
