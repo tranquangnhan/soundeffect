@@ -28,7 +28,7 @@ export interface WebSearchResult {
 
 export type ViewMode = 'LIBRARY' | 'UPLOAD' | 'EXTRACTOR' | 'WEB_SEARCH' | 'RECOMMENDATIONS';
 
-export const CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   'Chưa phân loại',
   'Điện ảnh',
   'Foley (Tiếng động)',

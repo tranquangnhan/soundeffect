@@ -1,10 +1,18 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { SoundEffect, WebSearchResult, CATEGORIES } from "../types";
+import { SoundEffect, WebSearchResult, DEFAULT_CATEGORIES } from "../types";
 
 // Initialize Gemini Client
-// Assumes process.env.API_KEY is available as per instructions
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safely access process.env to prevent crashes in browser environments
+const getApiKey = () => {
+  try {
+    return process.env.API_KEY || '';
+  } catch (e) {
+    return (window as any).process?.env?.API_KEY || '';
+  }
+};
+
+const apiKey = getApiKey();
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const MODEL_FLASH = 'gemini-2.5-flash';
 
@@ -18,16 +26,20 @@ export const analyzeSoundInfo = async (
 ): Promise<{ name: string; category: string; tags: string[] }> => {
   try {
     const prompt = `
-      Bạn là một trợ lý phân tích âm thanh cho Editor chuyên nghiệp.
-      Hãy phân tích tệp âm thanh này.
-      Tên gốc: "${filename}".
+      Bạn là một trợ lý âm thanh AI chuyên nghiệp cho các Video Editor Việt Nam.
       
-      Nhiệm vụ:
-      1. Đặt lại tên (Title) bằng TIẾNG VIỆT sao cho dễ hiểu, ngắn gọn, mô tả đúng âm thanh (bỏ đuôi file, bỏ ký tự lạ).
-      2. Chọn một Danh mục (Category) phù hợp nhất từ danh sách này: ${JSON.stringify(CATEGORIES)}.
-      3. Tạo 3-5 thẻ (tags) mô tả ngắn gọn bằng TIẾNG VIỆT (ví dụ: tiếng bước chân, tiếng mưa, cháy nổ).
-      
-      Trả về định dạng JSON.
+      Nhiệm vụ: Phân tích file âm thanh này và tạo metadata tiếng Việt chuẩn.
+      Tên file gốc: "${filename}"
+
+      Yêu cầu đầu ra:
+      1. Tên (name): Đặt lại tên mô tả hành động/sự vật cụ thể bằng TIẾNG VIỆT. 
+         - Ví dụ: "Tiếng bước chân trên sỏi", "Tiếng súng lục giảm thanh", "Tiếng mưa rào".
+         - Không dùng từ chung chung như "Audio 1", "File âm thanh".
+         - Viết hoa chữ cái đầu.
+      2. Danh mục (category): Chọn chính xác 1 mục từ danh sách sau: ${JSON.stringify(DEFAULT_CATEGORIES)}. Nếu không chắc, chọn "Chưa phân loại".
+      3. Thẻ (tags): 3-5 từ khóa ngắn gọn tiếng Việt để tìm kiếm (ví dụ: "kinh dị", "hồi hộp", "nhanh").
+
+      Trả về JSON thuần túy.
     `;
 
     const parts: any[] = [{ text: prompt }];
@@ -66,9 +78,9 @@ export const analyzeSoundInfo = async (
     console.error("Error analyzing sound:", error);
     // Fallback if AI fails
     return {
-      name: filename.replace(/\.[^/.]+$/, ""),
+      name: filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
       category: "Chưa phân loại",
-      tags: ["imported"]
+      tags: ["error-ai"]
     };
   }
 };

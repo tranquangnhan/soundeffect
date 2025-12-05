@@ -1,7 +1,5 @@
 {
-  "name": "Tìm kiếm sound AI",
+  "name": "SFX Studio",
   "description": "An AI-powered sound effect manager for editors. Features smart search, auto-tagging, video sound extraction, and copyright estimation.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "requestFramePermissions": []
 }

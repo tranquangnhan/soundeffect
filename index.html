@@ -3,9 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SonicFlow AI</title>
+    <title>SFX Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Polyfill process for browser environment to prevent crashes
+      window.process = window.process || { env: {} };
+      
       tailwind.config = {
         theme: {
           extend: {
@@ -39,6 +42,14 @@
       }
     </script>
     <style>
+      /* Reset & Full Height */
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+
       /* Custom scrollbar for dark theme - minimal */
       ::-webkit-scrollbar {
         width: 6px;
@@ -78,6 +89,7 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
     "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
   }
@@ -87,6 +99,7 @@
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { findSoundsOnline } from '../services/geminiService';
 import { WebSearchResult } from '../types';
@@ -19,7 +18,7 @@ const WebSearch: React.FC = () => {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col">
+    <div className="p-6 h-full flex flex-col" id="tour-web-search">
        <h2 className="text-2xl font-bold mb-4">Web Search</h2>
        <form onSubmit={handleSearch} className="flex gap-2 mb-6">
          <input
@@ -41,7 +40,7 @@ const WebSearch: React.FC = () => {
        <div className="flex-1 overflow-y-auto">
           {loading && (
              <div className="text-center py-10 text-zinc-500">
-               <p>Searching the web via Gemini...</p>
+               <p>Searching the web...</p>
              </div>
           )}
 

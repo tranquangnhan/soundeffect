@@ -3,14 +3,16 @@ import React, { useState, useRef } from 'react';
 import { analyzeSoundInfo } from '../services/geminiService';
 import { blobToBase64, getAudioDuration } from '../services/audioUtils';
 import { SoundEffect, SoundSource } from '../types';
+import { isReadonlyMode } from '../services/storage';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 interface UploadModalProps {
   onUpload: (sound: SoundEffect, file: Blob) => void;
+  onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ onUpload, onShowToast }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentName: '' });
@@ -20,9 +22,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
 
   const processFiles = async (fileList: FileList | File[]) => {
     const files = Array.from(fileList).filter(f => f.type.startsWith('audio/'));
+    const isReadOnly = isReadonlyMode();
 
     if (files.length === 0) {
-      alert("No supported audio files found in selection.");
+      onShowToast("Không tìm thấy file âm thanh hợp lệ.", "error");
       return;
     }
 
@@ -37,7 +40,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
         const url = URL.createObjectURL(file);
         const duration = await getAudioDuration(url);
         
-        // For analysis, we send a small sample or check if file is small enough
         let base64 = undefined;
         if (file.size < 4 * 1024 * 1024) { 
            base64 = await blobToBase64(file);
@@ -50,7 +52,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
           name: info.name,
           category: info.category,
           tags: info.tags,
-          url: url, // Temporary blob url
+          url: url,
           duration: duration,
           source: SoundSource.UPLOAD,
           isFavorite: false,
@@ -58,11 +60,17 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
           filename: file.name
         };
 
-        // Pass raw file to be saved to disk
         await onUpload(newSound, file);
+
       } catch (error) {
         console.error(`Error processing ${file.name}:`, error);
       }
+    }
+
+    if (isReadOnly) {
+        onShowToast("Chế độ Chỉ Đọc: File sẽ không lưu vào ổ cứng.", "info");
+    } else {
+        onShowToast("Đã upload và phân loại xong!", "success");
     }
 
     setIsProcessing(false);
@@ -77,14 +85,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
     }
   };
 
+  const isReadOnly = isReadonlyMode();
+
   return (
     <div className="flex flex-col items-center justify-center h-full p-8">
       {isProcessing ? (
         <div className="text-center animate-pulse max-w-md w-full">
           <div className="text-5xl mb-4">🧠</div>
-          <h3 className="text-xl font-bold text-white mb-2">Analyzing Library</h3>
+          <h3 className="text-xl font-bold text-white mb-2">Đang phân tích thư viện</h3>
           <p className="text-primary-400 font-medium mb-4">
-            Processing {progress.current} of {progress.total}
+            Đang xử lý {progress.current} / {progress.total}
           </p>
           <div className="w-full bg-zinc-800 rounded-full h-2 mb-2 overflow-hidden">
             <div 
@@ -93,11 +103,17 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
             ></div>
           </div>
           <p className="text-xs text-zinc-500 truncate">
-            Current: {progress.currentName}
+            {progress.currentName}
           </p>
         </div>
       ) : (
         <div className="flex flex-col items-center w-full max-w-2xl">
+          {isReadOnly && (
+             <div className="bg-yellow-500/20 text-yellow-200 px-4 py-2 rounded-lg mb-6 text-sm border border-yellow-500/30">
+                ⚠ Chế độ Read-Only: File sẽ không được lưu vào ổ cứng.
+             </div>
+          )}
+
           <div 
             className={`w-full h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer mb-8 ${
               isDragging ? 'border-primary-500 bg-primary-500/10 scale-105' : 'border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/30'
@@ -109,8 +125,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
           >
             <div className="text-center text-zinc-400">
               <div className="text-5xl mb-4">💾</div>
-              <p className="font-bold text-lg text-zinc-200">Drag & Drop to Local Folder</p>
-              <p className="text-sm mt-2 text-zinc-500">Files will be copied to your connected folder</p>
+              <p className="font-bold text-lg text-zinc-200">Kéo thả file vào đây</p>
+              <p className="text-sm mt-2 text-zinc-500">
+                  {isReadOnly ? "Phân tích file trong session hiện tại" : "File sẽ được copy vào thư mục gốc"}
+              </p>
             </div>
           </div>
 
@@ -119,14 +137,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload }) => {
               onClick={() => fileInputRef.current?.click()}
               className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
             >
-              <span>📄</span> Select Files
+              <span>📄</span> Chọn File
             </button>
-            <button 
-              onClick={() => folderInputRef.current?.click()}
-              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <span></span> Select Folder
-            </button>
+            {!isReadOnly && (
+                <button 
+                onClick={() => folderInputRef.current?.click()}
+                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                <span>📂</span> Chọn Thư Mục
+                </button>
+            )}
           </div>
 
           <input 
