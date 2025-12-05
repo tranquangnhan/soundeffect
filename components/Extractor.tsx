@@ -15,6 +15,7 @@ interface ExtractorProps {
 const Extractor: React.FC<ExtractorProps> = ({ onExtract, onShowToast }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // We still check mode for logic, but we won't show the warning banner
   const isReadOnly = isReadonlyMode();
 
   const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,6 +49,7 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract, onShowToast }) => {
       };
 
       if (isReadOnly) {
+          // Auto download in fallback mode without complaining
           const a = document.createElement('a');
           a.href = audioUrl;
           a.download = filename;
@@ -56,7 +58,7 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract, onShowToast }) => {
           document.body.removeChild(a);
           
           await onExtract(newSound, audioBlob);
-          onShowToast("Đã tách và tải xuống audio!", "success");
+          onShowToast("Đã tách và tải xuống máy!", "success");
       } else {
           await onExtract(newSound, audioBlob);
           onShowToast("Đã tách và lưu vào thư viện!", "success");
@@ -79,12 +81,6 @@ const Extractor: React.FC<ExtractorProps> = ({ onExtract, onShowToast }) => {
              <p className="text-zinc-400 text-sm">Tách âm thanh từ file video.</p>
            </div>
         </div>
-
-        {isReadOnly && (
-             <div className="bg-yellow-500/20 text-yellow-200 px-4 py-2 rounded-lg mb-6 text-sm border border-yellow-500/30">
-                Mode: Read-Only. File sẽ tự động tải xuống thay vì lưu vào thư mục.
-             </div>
-        )}
 
         <div className="space-y-4">
            <label className={`block w-full py-4 text-center border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-zinc-800 transition-colors ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
