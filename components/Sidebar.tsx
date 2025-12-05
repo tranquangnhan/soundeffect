@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ViewMode } from '../types';
 
@@ -14,13 +15,15 @@ interface SidebarProps {
   onDropSoundToCategory: (soundId: string, category: string) => void;
   onDisconnect?: () => void;
   onMagicScan?: () => void;
+  onCancelScan?: () => void;
   isScanning?: boolean;
+  scanProgress?: number;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
     currentView, setView, itemCount, folderName, onRescan,
     categories, activeCategory, onSelectCategory, onCreateCategory, onDropSoundToCategory,
-    onDisconnect, onMagicScan, isScanning
+    onDisconnect, onMagicScan, onCancelScan, isScanning, scanProgress = 0
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -29,7 +32,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems: { id: ViewMode; label: string; icon: string }[] = [
     { id: 'LIBRARY', label: 'Library', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
     { id: 'RECOMMENDATIONS', label: 'For You', icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' },
-    { id: 'UPLOAD', label: 'Upload', icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' },
     { id: 'EXTRACTOR', label: 'Extract', icon: 'M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z' },
     { id: 'WEB_SEARCH', label: 'Web', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' },
   ];
@@ -100,32 +102,47 @@ const Sidebar: React.FC<SidebarProps> = ({
             {/* MAGIC SCAN BUTTON (DESKTOP) */}
             {onMagicScan && (
               <div className="px-3 mt-6 mb-2">
-                <button 
-                  id="tour-magic-scan-desktop"
-                  onClick={onMagicScan}
-                  disabled={isScanning}
-                  className={`
-                    w-full relative overflow-hidden px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-lg active:scale-95 flex items-center justify-center gap-2
-                    ${isScanning 
-                      ? 'bg-ios-surface2 text-ios-gray cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-purple-500/40 hover:scale-[1.02]'
-                    }
-                  `}
-                >
-                   {isScanning ? (
-                     <>
-                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                       <span>Scanning...</span>
-                     </>
-                   ) : (
-                     <>
-                       <span className="text-lg">✨</span>
-                       <span>Magic Scan</span>
-                     </>
-                   )}
-                </button>
+                <div className="relative">
+                  <button 
+                    id="tour-magic-scan-desktop"
+                    onClick={isScanning ? undefined : onMagicScan}
+                    disabled={isScanning && !onCancelScan}
+                    className={`
+                      w-full relative overflow-hidden px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-lg flex items-center justify-center gap-2
+                      ${isScanning 
+                        ? 'bg-ios-surface2 text-ios-gray cursor-default' 
+                        : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-95'
+                      }
+                    `}
+                  >
+                     {isScanning ? (
+                       <>
+                         <div className="absolute left-0 top-0 h-full bg-ios-blue/20 transition-all duration-300" style={{ width: `${scanProgress}%` }}></div>
+                         <span className="relative z-10">{scanProgress}%</span>
+                       </>
+                     ) : (
+                       <>
+                         <span className="text-lg">✨</span>
+                         <span>Magic Scan</span>
+                       </>
+                     )}
+                  </button>
+                  
+                  {isScanning && onCancelScan && (
+                    <button 
+                      onClick={onCancelScan}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-ios-gray hover:text-red-400 hover:bg-white/10 rounded-full transition-colors z-20"
+                      title="Hủy Magic Scan"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                
                 <p className="text-[10px] text-ios-gray text-center mt-1.5 opacity-60">
-                   Tự động phân loại bằng AI
+                   {isScanning ? 'Đang phân tích bằng AI...' : 'Tự động phân loại bằng AI'}
                 </p>
               </div>
             )}
@@ -243,7 +260,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] font-medium">{item.label.replace('LIBRARY', 'Lib')}</span>
             </button>
           ))}
-          {/* Mobile Menu for Extra Actions (Rescan/Folder) could go here or in a modal */}
         </nav>
       </div>
     </>

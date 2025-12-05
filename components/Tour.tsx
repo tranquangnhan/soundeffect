@@ -24,7 +24,7 @@ const TOUR_STEPS: Step[] = [
   {
     targetId: 'tour-sidebar',
     title: 'Thanh điều hướng',
-    description: 'Truy cập Thư viện, Upload, Tách nhạc từ video và Tìm kiếm Web tại đây.',
+    description: 'Truy cập Thư viện, Tách nhạc từ video và Tìm kiếm Web tại đây.',
     placement: 'right'
   },
   {

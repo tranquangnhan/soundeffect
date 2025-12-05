@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import SoundList from './components/SoundList';
-import UploadModal from './components/UploadModal';
 import Extractor from './components/Extractor';
 import WebSearch from './components/WebSearch';
 import Recommendations from './components/Recommendations';
@@ -43,6 +42,7 @@ const App: React.FC = () => {
   // Batch Processing State
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const cancelScanRef = useRef(false);
 
   const [folderName, setFolderName] = useState<string | null>(null);
   const [savedFolder, setSavedFolder] = useState<string | null>(null);
@@ -231,7 +231,22 @@ const App: React.FC = () => {
     setIsSmartSearching(false);
   };
 
+  const handleCancelScan = () => {
+    if (isBatchProcessing) {
+      cancelScanRef.current = true;
+      setIsBatchProcessing(false);
+      setBatchProgress(0);
+      showToast("Đã dừng Magic Scan.", "info");
+    }
+  };
+
   const handleBatchAutoRename = async () => {
+    // If currently processing, clicking again (via button in header) cancels it.
+    if (isBatchProcessing) {
+      handleCancelScan();
+      return;
+    }
+
     const unclassified = sounds.filter(s => 
       !s.category || 
       s.category === 'Chưa phân loại' || 
@@ -250,10 +265,13 @@ const App: React.FC = () => {
       async () => {
         setConfirmDialog(null); // Close modal
         setIsBatchProcessing(true);
+        cancelScanRef.current = false;
         let processedCount = 0;
         let currentLib = [...sounds];
 
         for (const sound of unclassified) {
+          if (cancelScanRef.current) break; // Check for cancellation
+
           try {
               processedCount++;
               setBatchProgress(Math.round((processedCount / unclassified.length) * 100));
@@ -290,7 +308,10 @@ const App: React.FC = () => {
         await saveMetadata(currentLib, customCategories);
         setIsBatchProcessing(false);
         setBatchProgress(0);
-        showToast("Hoàn tất Magic Scan!", "success");
+        
+        if (!cancelScanRef.current) {
+          showToast("Hoàn tất Magic Scan!", "success");
+        }
       }
     );
   };
@@ -409,7 +430,9 @@ const App: React.FC = () => {
         onDropSoundToCategory={handleDropSoundToCategory}
         onDisconnect={handleDisconnect}
         onMagicScan={handleBatchAutoRename}
+        onCancelScan={handleCancelScan}
         isScanning={isBatchProcessing}
+        scanProgress={batchProgress}
       />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 w-full">
@@ -421,17 +444,20 @@ const App: React.FC = () => {
               <div className="md:hidden">
                 <button 
                   onClick={handleBatchAutoRename}
-                  disabled={isBatchProcessing}
+                  // Not disabling when processing, allowing click to cancel
                   className={`
                     w-10 h-10 rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all
                     ${isBatchProcessing 
-                      ? 'bg-ios-surface2' 
+                      ? 'bg-ios-surface2 text-red-400 border border-red-500/30' 
                       : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
                     }
                   `}
                 >
                    {isBatchProcessing ? (
-                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                     <div className="flex flex-col items-center justify-center">
+                        <span className="text-[9px] font-bold">{batchProgress}%</span>
+                        <span className="text-[9px]">✕</span>
+                     </div>
                    ) : (
                      <span>✨</span>
                    )}
@@ -479,7 +505,6 @@ const App: React.FC = () => {
                onShowToast={showToast}
             />
           )}
-          {view === 'UPLOAD' && <UploadModal onUpload={handleAddSound} onShowToast={showToast} />}
           {view === 'EXTRACTOR' && <Extractor onExtract={handleAddSound} onShowToast={showToast} />}
           {view === 'WEB_SEARCH' && <WebSearch />}
           {view === 'RECOMMENDATIONS' && (

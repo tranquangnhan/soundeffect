@@ -1,4 +1,5 @@
 
+
 export enum SoundSource {
   UPLOAD = 'UPLOAD',
   EXTRACTED = 'EXTRACTED',
@@ -26,7 +27,7 @@ export interface WebSearchResult {
   snippet: string;
 }
 
-export type ViewMode = 'LIBRARY' | 'UPLOAD' | 'EXTRACTOR' | 'WEB_SEARCH' | 'RECOMMENDATIONS';
+export type ViewMode = 'LIBRARY' | 'EXTRACTOR' | 'WEB_SEARCH' | 'RECOMMENDATIONS';
 
 export const DEFAULT_CATEGORIES = [
   'Chưa phân loại',
