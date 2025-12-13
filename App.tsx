@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import SoundList from './components/SoundList';
 import Extractor from './components/Extractor';
@@ -48,6 +48,7 @@ const App: React.FC = () => {
   const [savedFolder, setSavedFolder] = useState<string | null>(null);
   
   const fallbackInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null); // Ref for shortcut
 
   // UI Feedback State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -83,6 +84,18 @@ const App: React.FC = () => {
        // Wait a bit for UI to load
        setTimeout(() => setShowTour(true), 1000);
     }
+  }, []);
+
+  // Keyboard Shortcuts (Ctrl + F)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const finishTour = () => {
@@ -191,6 +204,37 @@ const App: React.FC = () => {
     setCustomCategories(newCustom);
     await saveMetadata(sounds, newCustom);
     showToast(`Đã tạo danh mục "${name}"`, "success");
+  };
+
+  const handleDeleteCategory = async (category: string) => {
+    if (DEFAULT_CATEGORIES.includes(category)) return;
+
+    requestConfirm(
+      "Xóa danh mục",
+      `Bạn có chắc muốn xóa danh mục "${category}"? Các âm thanh trong này sẽ chuyển về "Chưa phân loại".`,
+      async () => {
+        // 1. Remove from custom list
+        const newCustom = customCategories.filter(c => c !== category);
+        setCustomCategories(newCustom);
+
+        // 2. Update sounds: Move sounds in this category to "Chưa phân loại"
+        const newLib = sounds.map(s => 
+          s.category === category ? { ...s, category: 'Chưa phân loại' } : s
+        );
+        setSounds(newLib);
+
+        // 3. Save
+        await saveMetadata(newLib, newCustom);
+
+        // 4. Reset view if needed
+        if (activeCategory === category) {
+          setActiveCategory('All');
+        }
+        
+        setConfirmDialog(null);
+        showToast(`Đã xóa danh mục "${category}"`, "success");
+      }
+    );
   };
 
   const handleDropSoundToCategory = async (soundId: string, category: string) => {
@@ -329,6 +373,32 @@ const App: React.FC = () => {
 
   const favorites = sounds.filter(s => s.isFavorite);
 
+  // --- RELATED TAGS CALCULATION ---
+  const relatedTags = useMemo(() => {
+    if (!searchQuery || displayedSounds.length === 0) return [];
+    
+    const tagCounts: Record<string, number> = {};
+    displayedSounds.forEach(sound => {
+      sound.tags.forEach(tag => {
+        const lowerTag = tag.toLowerCase();
+        // Ignore the search query itself in suggestions
+        if (!searchQuery.toLowerCase().includes(lowerTag)) {
+             tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        }
+      });
+    });
+
+    return Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1]) // Sort by frequency
+      .slice(0, 6) // Top 6
+      .map(([tag]) => tag);
+  }, [displayedSounds, searchQuery]);
+
+  const addTagToSearch = (tag: string) => {
+    setSearchQuery(prev => `${prev} ${tag}`.trim());
+    // Auto trigger search logic if needed, but the current UI requires enter or button
+  };
+
   // --- RENDERING ---
 
   // Screen 1: Connect / Reconnect Folder
@@ -427,6 +497,7 @@ const App: React.FC = () => {
         activeCategory={activeCategory}
         onSelectCategory={setActiveCategory}
         onCreateCategory={handleCreateCategory}
+        onDeleteCategory={handleDeleteCategory}
         onDropSoundToCategory={handleDropSoundToCategory}
         onDisconnect={handleDisconnect}
         onMagicScan={handleBatchAutoRename}
@@ -437,61 +508,104 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 w-full">
         {view === 'LIBRARY' && (
-          <header className="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row gap-3 md:gap-4 items-center justify-between sticky top-0 z-20 backdrop-blur-xl bg-ios-black/80 border-b border-white/5 shadow-sm">
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              
-              {/* MOBILE ONLY: MAGIC SCAN BUTTON */}
-              <div className="md:hidden">
-                <button 
-                  onClick={handleBatchAutoRename}
-                  // Not disabling when processing, allowing click to cancel
-                  className={`
-                    w-10 h-10 rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all
-                    ${isBatchProcessing 
-                      ? 'bg-ios-surface2 text-red-400 border border-red-500/30' 
-                      : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
-                    }
-                  `}
-                >
-                   {isBatchProcessing ? (
-                     <div className="flex flex-col items-center justify-center">
-                        <span className="text-[9px] font-bold">{batchProgress}%</span>
-                        <span className="text-[9px]">✕</span>
-                     </div>
-                   ) : (
-                     <span>✨</span>
-                   )}
-                </button>
-              </div>
+          <header className="px-4 md:px-6 py-3 md:py-4 flex flex-col items-start justify-between sticky top-0 z-20 backdrop-blur-xl bg-ios-black/80 border-b border-white/5 shadow-sm space-y-3">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-center justify-between w-full">
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                {/* MOBILE ONLY: MAGIC SCAN BUTTON */}
+                <div className="md:hidden">
+                    <button 
+                    onClick={handleBatchAutoRename}
+                    // Not disabling when processing, allowing click to cancel
+                    className={`
+                        w-10 h-10 rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all
+                        ${isBatchProcessing 
+                        ? 'bg-ios-surface2 text-red-400 border border-red-500/30' 
+                        : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
+                        }
+                    `}
+                    >
+                    {isBatchProcessing ? (
+                        <div className="flex flex-col items-center justify-center">
+                            <span className="text-[9px] font-bold">{batchProgress}%</span>
+                            <span className="text-[9px]">✕</span>
+                        </div>
+                    ) : (
+                        <span>✨</span>
+                    )}
+                    </button>
+                </div>
 
-              <div id="tour-search-bar" className="relative w-full md:w-72 group shrink-0">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && runSmartSearch()}
-                  className="w-full bg-ios-surface2/80 hover:bg-ios-surface2 transition-colors rounded-xl py-2 pl-9 pr-9 text-[13px] md:text-sm text-white placeholder-ios-gray focus:outline-none focus:ring-2 focus:ring-ios-blue/50"
-                />
-                <svg className="h-4 w-4 absolute left-3 top-2.5 text-ios-gray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {searchQuery && (
-                  <button onClick={runSmartSearch} className="absolute right-2 top-1.5 p-0.5 rounded-lg text-ios-blue hover:bg-white/10">✨</button>
-                )}
-              </div>
+                <div id="tour-search-bar" className="relative w-full md:w-96 group shrink-0">
+                    <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Tìm kiếm (Ctrl+F)..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setSearchQuery(val);
+                        // FIX: Reset filters if search is cleared
+                        if (!val.trim()) {
+                            setFilteredIds(null);
+                        }
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && runSmartSearch()}
+                    className="w-full bg-ios-surface2/80 hover:bg-ios-surface2 transition-colors rounded-xl py-2 pl-9 pr-20 text-[13px] md:text-sm text-white placeholder-ios-gray focus:outline-none focus:ring-2 focus:ring-ios-blue/50"
+                    />
+                    <svg className="h-4 w-4 absolute left-3 top-2.5 text-ios-gray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    
+                    <div className="absolute right-1.5 top-1.5 flex items-center">
+                        {searchQuery && (
+                        <button 
+                            onClick={() => { setSearchQuery(''); setFilteredIds(null); }} 
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-ios-gray hover:text-white hover:bg-white/10 transition-colors"
+                            title="Clear search"
+                        >
+                           ✕
+                        </button>
+                        )}
+                        <button 
+                            onClick={runSmartSearch} 
+                            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${searchQuery ? 'text-ios-blue hover:bg-ios-blue/20' : 'text-ios-gray/30'}`}
+                            title="AI Search"
+                            disabled={!searchQuery}
+                        >
+                            ✨
+                        </button>
+                    </div>
+                </div>
+                </div>
+
+                {/* Categories Scroll */}
+                <div className="relative w-full md:w-auto overflow-hidden">
+                   <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1 px-1">
+                      <button onClick={() => setActiveCategory('All')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all duration-300 ${activeCategory === 'All' ? 'bg-white text-black shadow-lg shadow-white/10 scale-105' : 'bg-ios-surface2 text-ios-gray hover:bg-white/10 hover:text-white'}`}>Tất cả</button>
+                      <button onClick={() => setActiveCategory('Favorites')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${activeCategory === 'Favorites' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow-lg shadow-yellow-900/20 scale-105' : 'bg-ios-surface2 text-ios-gray hover:bg-white/10 hover:text-white'}`}><span className="text-yellow-400">★</span> <span className="hidden md:inline">Đã lưu</span></button>
+                      <div className="w-px h-4 bg-white/10 mx-1 shrink-0"></div>
+                      {allCategories.map(category => (
+                        <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all duration-300 border border-transparent ${activeCategory === category ? 'bg-ios-blue text-white shadow-lg shadow-blue-900/40 scale-105' : 'bg-ios-surface2 text-ios-gray hover:bg-white/10 hover:text-white'}`}>{category}</button>
+                      ))}
+                   </div>
+                </div>
             </div>
 
-            <div className="relative w-full overflow-hidden">
-               <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1 px-1">
-                  <button onClick={() => setActiveCategory('All')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all duration-300 ${activeCategory === 'All' ? 'bg-white text-black shadow-lg shadow-white/10 scale-105' : 'bg-ios-surface2 text-ios-gray hover:bg-white/10 hover:text-white'}`}>Tất cả</button>
-                  <button onClick={() => setActiveCategory('Favorites')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${activeCategory === 'Favorites' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow-lg shadow-yellow-900/20 scale-105' : 'bg-ios-surface2 text-ios-gray hover:bg-white/10 hover:text-white'}`}><span className="text-yellow-400">★</span> <span className="hidden md:inline">Đã lưu</span></button>
-                  <div className="w-px h-4 bg-white/10 mx-1 shrink-0"></div>
-                  {allCategories.map(category => (
-                    <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all duration-300 border border-transparent ${activeCategory === category ? 'bg-ios-blue text-white shadow-lg shadow-blue-900/40 scale-105' : 'bg-ios-surface2 text-ios-gray hover:bg-white/10 hover:text-white'}`}>{category}</button>
-                  ))}
-               </div>
-            </div>
+            {/* Related Tags (Suggestions) */}
+            {relatedTags.length > 0 && (
+                <div className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar pt-1 animate-[fadeIn_0.3s_ease-out]">
+                    <span className="text-xs text-ios-gray font-medium whitespace-nowrap">Gợi ý:</span>
+                    {relatedTags.map((tag, idx) => (
+                        <button 
+                            key={idx}
+                            onClick={() => addTagToSearch(tag)}
+                            className="text-[11px] bg-white/5 hover:bg-ios-blue/20 hover:text-ios-blue border border-white/10 rounded-md px-2 py-0.5 transition-colors whitespace-nowrap"
+                        >
+                            + {tag}
+                        </button>
+                    ))}
+                </div>
+            )}
           </header>
         )}
 

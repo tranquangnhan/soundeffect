@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ViewMode } from '../types';
+import { ViewMode, DEFAULT_CATEGORIES } from '../types';
 
 interface SidebarProps {
   currentView: ViewMode;
@@ -12,6 +12,7 @@ interface SidebarProps {
   activeCategory: string | null;
   onSelectCategory: (category: string | null) => void;
   onCreateCategory: (name: string) => void;
+  onDeleteCategory?: (name: string) => void;
   onDropSoundToCategory: (soundId: string, category: string) => void;
   onDisconnect?: () => void;
   onMagicScan?: () => void;
@@ -22,7 +23,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ 
     currentView, setView, itemCount, folderName, onRescan,
-    categories, activeCategory, onSelectCategory, onCreateCategory, onDropSoundToCategory,
+    categories, activeCategory, onSelectCategory, onCreateCategory, onDeleteCategory, onDropSoundToCategory,
     onDisconnect, onMagicScan, onCancelScan, isScanning, scanProgress = 0
 }) => {
   const [isCreating, setIsCreating] = useState(false);
@@ -189,15 +190,34 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <button
                           key={cat}
                           onClick={() => { setView('LIBRARY'); onSelectCategory(cat); }}
-                          className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors group ${
                               activeCategory === cat ? 'bg-white/10 text-white' : 'text-ios-gray hover:text-white'
                           } ${dragOverCat === cat ? 'bg-ios-blue/20 ring-1 ring-ios-blue scale-105' : ''}`}
                           onDragOver={(e) => handleDragOver(e, cat)}
                           onDragLeave={() => setDragOverCat(null)}
                           onDrop={(e) => handleDrop(e, cat)}
                       >
-                          <span className={dragOverCat === cat ? 'text-ios-blue transition-colors' : 'text-zinc-500'}>🏷️</span>
-                          <span className="truncate">{cat}</span>
+                          <div className="flex items-center space-x-2 overflow-hidden">
+                             <span className={dragOverCat === cat ? 'text-ios-blue transition-colors' : 'text-zinc-500'}>🏷️</span>
+                             <span className="truncate">{cat}</span>
+                          </div>
+                          
+                          {/* Show delete button if not a default category */}
+                          {!DEFAULT_CATEGORIES.includes(cat) && onDeleteCategory && (
+                            <div 
+                              role="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteCategory(cat);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded text-ios-gray transition-all ml-1"
+                              title="Delete Category"
+                            >
+                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                               </svg>
+                            </div>
+                          )}
                       </button>
                   ))}
                </div>

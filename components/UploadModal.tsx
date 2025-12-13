@@ -21,11 +21,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload, onShowToast }) => {
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = async (fileList: FileList | File[]) => {
-    const files = Array.from(fileList).filter(f => f.type.startsWith('audio/'));
+    // Expanded filter for Audio Mime Types or specific extensions (like WMA/AAC/FLAC)
+    const files = Array.from(fileList).filter(f => 
+        f.type.startsWith('audio/') || 
+        /\.(aac|wma|flac|m4a|ogg|wav|mp3)$/i.test(f.name)
+    );
+    
     const isReadOnly = isReadonlyMode();
 
     if (files.length === 0) {
-      onShowToast("Không tìm thấy file âm thanh hợp lệ.", "error");
+      onShowToast("Không tìm thấy file âm thanh hợp lệ (MP3, WAV, AAC, WMA...).", "error");
       return;
     }
 
@@ -38,7 +43,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload, onShowToast }) => {
 
       try {
         const url = URL.createObjectURL(file);
-        const duration = await getAudioDuration(url);
+        
+        // Duration might fail for WMA/AAC in some browsers, default to 0
+        let duration = 0;
+        try {
+            duration = await getAudioDuration(url);
+        } catch(e) {
+            console.warn("Could not get duration for", file.name);
+        }
         
         let base64 = undefined;
         if (file.size < 4 * 1024 * 1024) { 
@@ -129,6 +141,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload, onShowToast }) => {
               <p className="text-sm mt-2 text-zinc-500">
                   {isReadOnly ? "Phân tích file trong session hiện tại" : "File sẽ được copy vào thư mục gốc"}
               </p>
+              <p className="text-[10px] text-zinc-600 mt-2 uppercase tracking-widest">Supports: MP3, WAV, AAC, WMA, FLAC, M4A</p>
             </div>
           </div>
 
@@ -154,7 +167,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload, onShowToast }) => {
             ref={fileInputRef} 
             className="hidden" 
             multiple 
-            accept="audio/*"
+            accept="audio/*,.aac,.wma,.flac,.m4a"
             onChange={(e) => e.target.files && processFiles(e.target.files)}
           />
           

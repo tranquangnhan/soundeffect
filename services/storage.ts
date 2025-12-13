@@ -331,8 +331,8 @@ export const saveSoundToFolder = async (sound: SoundEffect, blob: Blob): Promise
   // Check if sound implies a folder in filename
   let filename = sound.filename || `${sound.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3`;
   
-  // Clean extension
-  if (!filename.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+  // Clean extension to ensure it is supported
+  if (!filename.match(/\.(mp3|wav|ogg|m4a|aac|wma|flac)$/i)) {
       if (blob.type.includes('wav')) filename += '.wav';
       else filename += '.mp3';
   }
@@ -355,5 +355,12 @@ export const saveSoundToFolder = async (sound: SoundEffect, blob: Blob): Promise
 };
 
 const isAudioFile = (name: string) => {
-    return name.endsWith('.mp3') || name.endsWith('.wav') || name.endsWith('.ogg') || name.endsWith('.m4a');
+    const n = name.toLowerCase();
+    return n.endsWith('.mp3') || 
+           n.endsWith('.wav') || 
+           n.endsWith('.ogg') || 
+           n.endsWith('.m4a') || 
+           n.endsWith('.aac') || 
+           n.endsWith('.wma') ||
+           n.endsWith('.flac');
 };
